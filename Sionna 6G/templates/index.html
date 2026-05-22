@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sionnah3x Research Assistant — GPU-accelerated wireless communication simulation workbench powered by NVIDIA Sionna">
+    <title>Sionnah3x Research Assistant</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <div class="logo-icon">📡</div>
+                    <div class="logo-text">
+                        <h1>Sionnah3x</h1>
+                        <span>Research Assistant</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Overview</div>
+                <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+                    <span class="nav-icon">🏠</span> Dashboard
+                </a>
+
+                <div class="nav-section-title">Simulations</div>
+                <a class="nav-item" data-page="ber" onclick="navigateTo('ber')">
+                    <span class="nav-icon">📊</span> BER Analyzer
+                </a>
+                <a class="nav-item" data-page="constellation" onclick="navigateTo('constellation')">
+                    <span class="nav-icon">🔵</span> Constellation
+                </a>
+                <a class="nav-item" data-page="channel" onclick="navigateTo('channel')">
+                    <span class="nav-icon">📡</span> Channel Explorer
+                </a>
+                <a class="nav-item" data-page="ofdm" onclick="navigateTo('ofdm')">
+                    <span class="nav-icon">📶</span> OFDM Lab
+                </a>
+
+                <div class="nav-section-title">Data</div>
+                <a class="nav-item" data-page="history" onclick="navigateTo('history')">
+                    <span class="nav-icon">📋</span> History
+                </a>
+
+                <a class="nav-item" data-page="compare" onclick="navigateTo('compare')">
+                    <span class="nav-icon">🔬</span> Compare Lab
+                </a>
+
+                <div class="nav-section-title">System</div>
+                <a class="nav-item" data-page="about" onclick="navigateTo('about')">
+                    <span class="nav-icon">ℹ️</span> About & Help
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-row">
+                    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Theme">
+                        <span id="theme-icon">🌙</span>
+                        <span id="theme-label">Dark Mode</span>
+                    </button>
+                    <button class="notif-bell-btn" id="notif-bell" onclick="NotificationCenter.toggle()" title="Notifications">
+                        🔔 <span class="notif-badge" id="notif-badge" style="display:none">0</span>
+                    </button>
+                </div>
+                <!-- Notification Panel -->
+                <div class="notif-panel" id="notif-panel" style="display:none">
+                    <div class="notif-panel-header">
+                        <span>Notifications</span>
+                        <button class="btn btn-secondary btn-sm" onclick="NotificationCenter.clear()">Clear</button>
+                    </div>
+                    <div class="notif-list" id="notif-list"></div>
+                </div>
+                <div class="system-status" id="system-status">
+                    <div class="status-item">
+                        <span class="status-label">Sionna</span>
+                        <span class="status-badge offline" id="status-sionna">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">PyTorch</span>
+                        <span class="status-badge offline" id="status-pytorch">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Device</span>
+                        <span class="status-value" id="status-device">—</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Shortcuts</span>
+                        <span class="status-value" style="cursor:pointer;color:var(--accent-secondary)" onclick="openCommandPalette()">Ctrl+K</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+        <!-- Session Stats Bar -->
+        <div class="session-stats-bar" id="session-stats-bar">
+            <div class="session-stat"><span class="session-stat-icon">🔬</span><span class="session-stat-val" id="ss-sim-count">0</span><span class="session-stat-label">This Session</span></div>
+            <div class="session-stat"><span class="session-stat-icon">⏱️</span><span class="session-stat-val" id="ss-total-time">0s</span><span class="session-stat-label">Compute Time</span></div>
+            <div class="session-stat"><span class="session-stat-icon">📋</span><span class="session-stat-val" id="ss-queue-depth">0</span><span class="session-stat-label">Queued</span></div>
+            <div class="session-stat"><span class="session-stat-icon">⭐</span><span class="session-stat-val" id="ss-favorites">0</span><span class="session-stat-label">Favorites</span></div>
+        </div>
+        <main class="main-content">
+
+            <!-- ─────────── DASHBOARD ─────────── -->
+            <div class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <h2>Research Dashboard</h2>
+                    <p>Welcome to Sionnah3x Research Assistant — your simulation workbench for next-gen communications.</p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="stat-card green">
+                        <div class="stat-icon">🔬</div>
+                        <div class="stat-value" id="dash-total-sims">0</div>
+                        <div class="stat-label">Total Simulations</div>
+                    </div>
+                    <div class="stat-card cyan">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-value" id="dash-engine">—</div>
+                        <div class="stat-label">Compute Engine</div>
+                    </div>
+                    <div class="stat-card orange">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-value" id="dash-gpu">—</div>
+                        <div class="stat-label">GPU Status</div>
+                    </div>
+                    <div class="stat-card purple">
+                        <div class="stat-icon">🐍</div>
+                        <div class="stat-value" id="dash-python">—</div>
+                        <div class="stat-label">Python Version</div>
+                    </div>
+                </div>
+
+                <!-- Analytics Row -->
+                <div class="analytics-row">
+                    <div class="card analytics-card">
+                        <div class="card-header"><div class="card-title">📊 Simulation Distribution</div></div>
+                        <div class="analytics-chart-wrap"><canvas id="analytics-distribution" height="200"></canvas></div>
+                    </div>
+                    <div class="card analytics-card">
+                        <div class="card-header"><div class="card-title">📈 Daily Activity (14 days)</div></div>
+                        <div class="analytics-chart-wrap"><canvas id="analytics-activity" height="200"></canvas></div>
+                    </div>
+                    <div class="card analytics-card">
+                        <div class="card-header"><div class="card-title">🏆 Best BER Results</div></div>
+                        <div id="analytics-ber-trend" class="analytics-list"></div>
+                    </div>
+                    <div class="card analytics-card">
+                        <div class="card-header"><div class="card-title">🎛️ Modulation Usage</div></div>
+                        <div id="analytics-mod-usage" class="analytics-list"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Quick Start</div>
+                            <div class="card-subtitle">Jump into a simulation module</div>
+                        </div>
+                    </div>
+                    <div class="quickstart-grid">
+                        <div class="quickstart-card" onclick="navigateTo('ber')">
+                            <div class="quickstart-icon">📊</div>
+                            <div class="quickstart-title">BER vs SNR Analysis</div>
+                            <div class="quickstart-desc">Run bit error rate simulations with LDPC coding, QAM modulations, and multiple channel models.</div>
+                        </div>
+                        <div class="quickstart-card" onclick="navigateTo('constellation')">
+                            <div class="quickstart-icon">🔵</div>
+                            <div class="quickstart-title">Constellation Diagrams</div>
+                            <div class="quickstart-desc">Visualize TX/RX constellations with EVM computation for various modulation schemes.</div>
+                        </div>
+                        <div class="quickstart-card" onclick="navigateTo('channel')">
+                            <div class="quickstart-icon">📡</div>
+                            <div class="quickstart-title">Channel Models</div>
+                            <div class="quickstart-desc">Explore 3GPP TDL channel models with impulse response and frequency domain analysis.</div>
+                        </div>
+                        <div class="quickstart-card" onclick="navigateTo('ofdm')">
+                            <div class="quickstart-icon">📶</div>
+                            <div class="quickstart-title">OFDM System Lab</div>
+                            <div class="quickstart-desc">Full OFDM simulation with resource grids, channel estimation, and equalizer comparison.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Simulations -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Recent Simulations</div>
+                            <div class="card-subtitle">Your latest research results</div>
+                        </div>
+                    </div>
+                    <div id="recent-sims-container">
+                        <div class="empty-state" style="padding:30px 20px;">
+                            <div class="empty-state-desc">No simulations yet. Run one to see results here.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── BER ANALYZER ─────────── -->
+            <div class="page" id="page-ber">
+                <div class="page-header">
+                    <h2>BER Analyzer</h2>
+                    <p>Simulate Bit Error Rate vs Signal-to-Noise Ratio with configurable modulation, coding, and channel models.</p>
+                </div>
+
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Simulation Parameters</div>
+                                <div class="preset-controls">
+                                    <select id="ber-preset" onchange="loadPreset('ber')">
+                                        <option value="">Presets...</option>
+                                        <option value="awgn_validation">AWGN Theory Validation</option>
+                                        <option value="nr_baseline">3GPP NR Baseline</option>
+                                        <option value="urban_mimo">Urban Macro MIMO</option>
+                                    </select>
+                                    <button class="btn btn-secondary btn-sm" onclick="savePreset('ber')" title="Save current config as preset">💾</button>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ber-modulation">Modulation <span class="tooltip-icon" data-tip="Digital modulation order. Higher order = more bits/symbol but requires higher SNR.">ⓘ</span></label>
+                                <select id="ber-modulation">
+                                    <option value="bpsk">BPSK (1 bit/sym)</option>
+                                    <option value="qpsk" selected>QPSK (2 bits/sym)</option>
+                                    <option value="16qam">16-QAM (4 bits/sym)</option>
+                                    <option value="64qam">64-QAM (6 bits/sym)</option>
+                                    <option value="256qam">256-QAM (8 bits/sym)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ber-channel">Channel Model <span class="tooltip-icon" data-tip="AWGN: additive white Gaussian noise only. Rayleigh: flat fading (no LOS). Rician: fading with LOS component (K=10).">ⓘ</span></label>
+                                <select id="ber-channel">
+                                    <option value="awgn" selected>AWGN</option>
+                                    <option value="rayleigh">Rayleigh Fading</option>
+                                    <option value="rician">Rician Fading (K=10)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ber-coding">FEC Coding <span class="tooltip-icon" data-tip="Forward Error Correction. LDPC codes provide ~3-10 dB coding gain at the cost of reduced code rate.">ⓘ</span></label>
+                                <select id="ber-coding">
+                                    <option value="uncoded" selected>Uncoded</option>
+                                    <option value="ldpc">5G NR LDPC (R=1/2)</option>
+                                </select>
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <!-- MIMO -->
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-num-tx">TX Antennas <span class="tooltip-icon" data-tip="Number of transmit antennas for MIMO spatial multiplexing.">ⓘ</span></label>
+                                    <select id="ber-num-tx">
+                                        <option value="1" selected>1 (SISO)</option>
+                                        <option value="2">2</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-num-rx">RX Antennas</label>
+                                    <select id="ber-num-rx">
+                                        <option value="1" selected>1 (SISO)</option>
+                                        <option value="2">2</option>
+                                        <option value="4">4</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-snr-min">SNR Min (dB)</label>
+                                    <input type="number" id="ber-snr-min" value="0" step="1">
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-snr-max">SNR Max (dB)</label>
+                                    <input type="number" id="ber-snr-max" value="20" step="1">
+                                </div>
+                            </div>
+
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-snr-step">Step (dB)</label>
+                                    <input type="number" id="ber-snr-step" value="2" step="0.5" min="0.5">
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-num-bits">Bits/Iteration</label>
+                                    <input type="number" id="ber-num-bits" value="100000" step="10000" min="1000">
+                                </div>
+                            </div>
+
+                            <!-- Statistical Rigor -->
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-min-errors">Min Errors <span class="tooltip-icon" data-tip="Minimum bit errors to collect per SNR point before stopping. Higher = more accurate BER but slower. Standard: 100.">ⓘ</span></label>
+                                    <input type="number" id="ber-min-errors" value="100" step="50" min="10">
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ber-max-iter">Max Iterations</label>
+                                    <input type="number" id="ber-max-iter" value="50" step="10" min="1">
+                                </div>
+                            </div>
+
+                            <!-- Seed -->
+                            <div class="control-group">
+                                <label class="control-label" for="ber-seed">Random Seed <span class="tooltip-icon" data-tip="Set a fixed seed for reproducible results. Leave as 'auto' for random.">ⓘ</span></label>
+                                <input type="text" id="ber-seed" value="auto" placeholder="auto or integer">
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <button class="btn btn-primary btn-full" id="btn-run-ber" onclick="runBerSimulation()">
+                                ⚡ Run BER Simulation
+                            </button>
+
+                            <div id="ber-validation-msg"></div>
+                            <div class="ber-action-row">
+                                <span class="time-estimate" id="ber-time-estimate">—</span>
+                                <button class="btn btn-secondary btn-sm" onclick="SimQueue.add()" title="Add current config to simulation queue">
+                                    ➕ Queue
+                                </button>
+                            </div>
+
+                            <!-- Sweep Mode -->
+                            <div class="sweep-section">
+                                <div class="card-subtitle" style="margin:16px 0 8px;font-weight:600;color:var(--text-primary);">Parameter Sweep</div>
+                                <div class="control-group">
+                                    <label class="control-label">Sweep Modulations</label>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-label"><input type="checkbox" value="bpsk" class="sweep-mod-cb"> BPSK</label>
+                                        <label class="checkbox-label"><input type="checkbox" value="qpsk" class="sweep-mod-cb" checked> QPSK</label>
+                                        <label class="checkbox-label"><input type="checkbox" value="16qam" class="sweep-mod-cb" checked> 16-QAM</label>
+                                        <label class="checkbox-label"><input type="checkbox" value="64qam" class="sweep-mod-cb"> 64-QAM</label>
+                                    </div>
+                                </div>
+                                <button class="btn btn-secondary btn-full" onclick="runBerSweep()">
+                                    🔄 Run Modulation Sweep
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Simulation Queue -->
+                        <div class="card queue-card" id="queue-card" style="margin-top:16px;">
+                            <div class="card-header">
+                                <div class="card-title">📋 Queue <span class="queue-badge" id="queue-count" style="display:none">0</span></div>
+                                <div style="display:flex;gap:6px">
+                                    <button class="btn btn-primary btn-sm" id="btn-run-queue" onclick="SimQueue.runAll()">▶ Run Queue</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="SimQueue.clearCompleted()">Clear ✓</button>
+                                </div>
+                            </div>
+                            <div id="queue-list"></div>
+                        </div>
+
+                    </div><!-- close sim-controls -->
+
+                    <div class="sim-results">
+                        <div class="card" style="position:relative;">
+                            <div class="loading-overlay" id="ber-loading">
+                                <div id="ber-progress-panel" class="progress-panel" style="display:none;">
+                                    <div class="progress-header">⚡ BER Simulation Running</div>
+                                    <div class="progress-bar-wrap">
+                                        <div class="progress-bar-fill" id="ber-progress-fill" style="width:0%"></div>
+                                    </div>
+                                    <div class="progress-stats">
+                                        <span id="ber-progress-text">Initializing...</span>
+                                        <span id="ber-progress-eta"></span>
+                                    </div>
+                                    <div class="progress-detail" id="ber-progress-detail"></div>
+                                </div>
+                                <div id="ber-spinner-fallback">
+                                    <div class="spinner"></div>
+                                    <div class="loading-text">Running BER simulation...</div>
+                                </div>
+                            </div>
+                            <div id="ber-results-container">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">📊</div>
+                                    <div class="empty-state-title">No Results Yet</div>
+                                    <div class="empty-state-desc">Configure parameters and run a BER simulation to see results here.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison Chart -->
+                        <div class="card" id="comparison-card" style="display:none; margin-top:20px;">
+                            <div class="card-header">
+                                <div class="card-title">📊 BER Comparison Overlay</div>
+                                <div style="display:flex;gap:8px;">
+                                    <button class="btn btn-secondary btn-sm" onclick="clearComparison()">Clear All</button>
+                                </div>
+                            </div>
+                            <div class="plot-container">
+                                <canvas id="comparison-chart" height="350"></canvas>
+                            </div>
+                            <div id="comparison-legend" class="comparison-legend"></div>
+                        </div>
+
+                        <!-- BER Heatmap -->
+                        <div class="card" id="heatmap-card" style="display:none; margin-top:20px;">
+                            <div class="card-header">
+                                <div class="card-title">🗺️ BER Heatmap (Modulation × SNR)</div>
+                            </div>
+                            <div class="plot-container" id="heatmap-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── CONSTELLATION ─────────── -->
+            <div class="page" id="page-constellation">
+                <div class="page-header">
+                    <h2>Constellation Viewer</h2>
+                    <p>Generate constellation diagrams with Error Vector Magnitude (EVM) computation.</p>
+                </div>
+
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Parameters</div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="const-modulation">Modulation</label>
+                                <select id="const-modulation">
+                                    <option value="qpsk" selected>QPSK</option>
+                                    <option value="16qam">16-QAM</option>
+                                    <option value="64qam">64-QAM</option>
+                                    <option value="256qam">256-QAM</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="const-channel">Channel</label>
+                                <select id="const-channel">
+                                    <option value="awgn" selected>AWGN</option>
+                                    <option value="rayleigh">Rayleigh</option>
+                                    <option value="rician">Rician</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label">SNR (dB)</label>
+                                <div class="range-group">
+                                    <input type="range" id="const-snr" min="0" max="35" value="15" step="1"
+                                           oninput="document.getElementById('const-snr-val').textContent=this.value+'dB'">
+                                    <span class="range-value" id="const-snr-val">15dB</span>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="const-symbols">Symbols</label>
+                                <input type="number" id="const-symbols" value="2000" step="500" min="100">
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="const-seed">Random Seed</label>
+                                <input type="text" id="const-seed" value="auto" placeholder="auto or integer">
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <button class="btn btn-primary btn-full" id="btn-run-const" onclick="runConstellationSimulation()">
+                                ⚡ Generate Constellation
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sim-results">
+                        <div class="card" style="position:relative;">
+                            <div class="loading-overlay" id="const-loading">
+                                <div class="spinner"></div>
+                                <div class="loading-text">Generating constellation...</div>
+                            </div>
+                            <div id="const-results-container">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">🔵</div>
+                                    <div class="empty-state-title">No Diagram Yet</div>
+                                    <div class="empty-state-desc">Set parameters and generate a constellation diagram.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── CHANNEL EXPLORER ─────────── -->
+            <div class="page" id="page-channel">
+                <div class="page-header">
+                    <h2>Channel Explorer</h2>
+                    <p>Visualize 3GPP TDL channel models with impulse response, frequency response, and power delay profiles.</p>
+                </div>
+
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Channel Parameters</div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ch-model">3GPP TDL Model</label>
+                                <select id="ch-model">
+                                    <option value="TDL-A" selected>TDL-A (NLOS Urban)</option>
+                                    <option value="TDL-B">TDL-B (NLOS Urban Micro)</option>
+                                    <option value="TDL-C">TDL-C (NLOS Urban Macro)</option>
+                                    <option value="TDL-D">TDL-D (LOS Rural)</option>
+                                    <option value="TDL-E">TDL-E (LOS Indoor)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label">Delay Spread (ns)</label>
+                                <div class="range-group">
+                                    <input type="range" id="ch-delay-spread" min="10" max="500" value="100" step="10"
+                                           oninput="document.getElementById('ch-delay-val').textContent=this.value+'ns'">
+                                    <span class="range-value" id="ch-delay-val">100ns</span>
+                                </div>
+                            </div>
+
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ch-subcarriers">Subcarriers</label>
+                                    <select id="ch-subcarriers">
+                                        <option value="64">64</option>
+                                        <option value="128">128</option>
+                                        <option value="256" selected>256</option>
+                                        <option value="512">512</option>
+                                        <option value="1024">1024</option>
+                                    </select>
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ch-scs">SCS (kHz)</label>
+                                    <select id="ch-scs">
+                                        <option value="15" selected>15</option>
+                                        <option value="30">30</option>
+                                        <option value="60">60</option>
+                                        <option value="120">120</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ch-realizations">Realizations</label>
+                                <input type="number" id="ch-realizations" value="100" step="50" min="10">
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ch-seed">Random Seed</label>
+                                <input type="text" id="ch-seed" value="auto" placeholder="auto or integer">
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <button class="btn btn-primary btn-full" id="btn-run-channel" onclick="runChannelSimulation()">
+                                ⚡ Simulate Channel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sim-results">
+                        <div class="card" style="position:relative;">
+                            <div class="loading-overlay" id="channel-loading">
+                                <div class="spinner"></div>
+                                <div class="loading-text">Simulating channel...</div>
+                            </div>
+                            <div id="channel-results-container">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">📡</div>
+                                    <div class="empty-state-title">No Channel Data</div>
+                                    <div class="empty-state-desc">Select a channel model and run the simulation.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── OFDM LAB ─────────── -->
+            <div class="page" id="page-ofdm">
+                <div class="page-header">
+                    <h2>OFDM System Lab</h2>
+                    <p>Full OFDM simulation with resource grids, pilot-based channel estimation, and equalizer comparison.</p>
+                </div>
+
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">OFDM Parameters</div>
+                            </div>
+
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ofdm-sc">Subcarriers</label>
+                                    <select id="ofdm-sc">
+                                        <option value="64">64</option>
+                                        <option value="128">128</option>
+                                        <option value="256" selected>256</option>
+                                        <option value="512">512</option>
+                                        <option value="1024">1024</option>
+                                    </select>
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ofdm-cp">CP Length</label>
+                                    <input type="number" id="ofdm-cp" value="32" step="8" min="8">
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ofdm-mod">Modulation</label>
+                                <select id="ofdm-mod">
+                                    <option value="qpsk" selected>QPSK</option>
+                                    <option value="16qam">16-QAM</option>
+                                    <option value="64qam">64-QAM</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ofdm-channel">Channel</label>
+                                <select id="ofdm-channel">
+                                    <option value="awgn">AWGN</option>
+                                    <option value="frequency_selective" selected>Frequency Selective</option>
+                                    <option value="TDL-A">TDL-A</option>
+                                    <option value="TDL-C">TDL-C</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label">SNR (dB)</label>
+                                <div class="range-group">
+                                    <input type="range" id="ofdm-snr" min="0" max="35" value="15" step="1"
+                                           oninput="document.getElementById('ofdm-snr-val').textContent=this.value+'dB'">
+                                    <span class="range-value" id="ofdm-snr-val">15dB</span>
+                                </div>
+                            </div>
+
+                            <div class="param-row">
+                                <div class="control-group">
+                                    <label class="control-label" for="ofdm-symbols">OFDM Symbols</label>
+                                    <input type="number" id="ofdm-symbols" value="14" step="1" min="1">
+                                </div>
+                                <div class="control-group">
+                                    <label class="control-label" for="ofdm-pilot">Pilot Spacing</label>
+                                    <input type="number" id="ofdm-pilot" value="8" step="2" min="2">
+                                </div>
+                            </div>
+
+                            <div class="control-group">
+                                <label class="control-label" for="ofdm-seed">Random Seed</label>
+                                <input type="text" id="ofdm-seed" value="auto" placeholder="auto or integer">
+                            </div>
+
+                            <div class="separator"></div>
+
+                            <button class="btn btn-primary btn-full" id="btn-run-ofdm" onclick="runOfdmSimulation()">
+                                ⚡ Run OFDM Simulation
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="sim-results">
+                        <div class="card" style="position:relative;">
+                            <div class="loading-overlay" id="ofdm-loading">
+                                <div class="spinner"></div>
+                                <div class="loading-text">Running OFDM simulation...</div>
+                            </div>
+                            <div id="ofdm-results-container">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">📶</div>
+                                    <div class="empty-state-title">No OFDM Results</div>
+                                    <div class="empty-state-desc">Configure parameters and run the OFDM system simulation.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── HISTORY ─────────── -->
+            <div class="page" id="page-history">
+                <div class="page-header">
+                    <h2>Simulation History</h2>
+                    <p>Browse, review, and export past simulation results.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Past Simulations</div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <input type="text" id="history-search" placeholder="🔍 Search simulations..." oninput="searchHistory(this.value)" style="width:200px;padding:6px 12px;font-size:12px;">
+                            <select id="history-filter" onchange="loadHistory()" style="width:auto;padding:6px 30px 6px 10px;font-size:12px;">
+                                <option value="">All Types</option>
+                                <option value="ber">BER</option>
+                                <option value="constellation">Constellation</option>
+                                <option value="channel">Channel</option>
+                                <option value="ofdm">OFDM</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" onclick="loadHistory()">Refresh</button>
+                        </div>
+                    </div>
+                    <div class="report-toolbar">
+                        <span style="font-size:12px;color:var(--text-tertiary)">Select simulations → <strong id="report-count">0</strong> selected</span>
+                        <button class="btn btn-primary btn-sm" onclick="generateReport()">📄 Generate Report</button>
+                    </div>
+                    <div id="history-container">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div class="empty-state-title">No History</div>
+                            <div class="empty-state-desc">Run some simulations to see them listed here.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── COMPARE LAB ─────────── -->
+            <div class="page" id="page-compare">
+                <div class="page-header">
+                    <h2>Compare Lab</h2>
+                    <p>Select multiple BER simulations to compare side-by-side with overlay charts and parameter diff.</p>
+                </div>
+
+                <div class="sim-layout">
+                    <div class="sim-controls">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Select Simulations</div>
+                                <button class="btn btn-primary btn-sm" onclick="runComparison()">🔬 Compare</button>
+                            </div>
+                            <div id="compare-sim-list" class="compare-list"></div>
+                        </div>
+                    </div>
+                    <div class="sim-results">
+                        <div class="card">
+                            <div id="compare-results">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">🔬</div>
+                                    <div class="empty-state-title">No Comparison Yet</div>
+                                    <div class="empty-state-desc">Select 2–6 BER simulations from the left panel and click Compare.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── ABOUT & HELP ─────────── -->
+            <div class="page" id="page-about">
+                <div class="page-header">
+                    <h2>About & Help</h2>
+                    <p>Sionnah3x Research Assistant — documentation, shortcuts, and citation guide.</p>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-header"><div class="card-title">📡 About</div></div>
+                    <div class="about-info">
+                        <p><strong>Sionnah3x Research Assistant</strong> — PhD-grade research workbench for next-generation wireless communication simulations.</p>
+                        <p style="margin-top:10px;">Built with <strong>NVIDIA Sionna 2.0</strong>, <strong>PyTorch</strong>, and <strong>Flask</strong>.</p>
+                        <p style="margin-top:6px;color:var(--text-tertiary);">Created by <strong style="color:var(--accent-primary);">rockh3x</strong></p>
+                        <div class="about-stack">
+                            <span class="chip">Python 3.14</span>
+                            <span class="chip">Sionna 2.0.1</span>
+                            <span class="chip">PyTorch</span>
+                            <span class="chip">CUDA</span>
+                            <span class="chip">Flask</span>
+                            <span class="chip">Chart.js</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-header"><div class="card-title">⌨️ Keyboard Shortcuts</div></div>
+                    <div class="shortcuts-grid">
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>K</kbd><span>Command Palette</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>1</kbd><span>Dashboard</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>2</kbd><span>BER Analyzer</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>3</kbd><span>Constellation</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>4</kbd><span>Channel Explorer</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>5</kbd><span>OFDM Lab</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>6</kbd><span>History</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>Enter</kbd><span>Run Simulation</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>E</kbd><span>Export Last Result</span></div>
+                        <div class="shortcut-item"><kbd>Escape</kbd><span>Close Palette/Modal</span></div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:20px;">
+                    <div class="card-header"><div class="card-title">📖 How to Cite</div></div>
+                    <div class="about-info">
+                        <p style="font-size:12px;color:var(--text-tertiary);">If you use this tool in your research, please cite:</p>
+                        <div class="reference-box" style="margin-top:10px;">
+                            <div class="ref-formula">Sionnah3x Research Assistant (2026). GPU-accelerated wireless communication simulation workbench. https://github.com/NVlabs/sionna</div>
+                            <div class="ref-citation" style="margin-top:8px;">See also: W. Hoydis et al., "Sionna: An Open-Source Library for Next-Generation Physical Layer Research," arXiv:2203.11854, 2022.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><div class="card-title">📚 Parameter Glossary</div></div>
+                    <div class="glossary-grid">
+                        <div class="glossary-item"><strong>BER</strong><span>Bit Error Rate — ratio of erroneous bits to total transmitted bits.</span></div>
+                        <div class="glossary-item"><strong>BLER</strong><span>Block Error Rate — ratio of blocks with at least one error.</span></div>
+                        <div class="glossary-item"><strong>SNR (Eb/N0)</strong><span>Signal-to-Noise Ratio per bit — the fundamental performance measure.</span></div>
+                        <div class="glossary-item"><strong>LDPC</strong><span>Low-Density Parity-Check codes — capacity-approaching FEC used in 5G NR.</span></div>
+                        <div class="glossary-item"><strong>MIMO</strong><span>Multiple-Input Multiple-Output — spatial multiplexing using multiple antennas.</span></div>
+                        <div class="glossary-item"><strong>OFDM</strong><span>Orthogonal Frequency-Division Multiplexing — multicarrier modulation for 4G/5G/6G.</span></div>
+                        <div class="glossary-item"><strong>TDL</strong><span>Tapped Delay Line — 3GPP channel models (A-E) for different propagation environments.</span></div>
+                        <div class="glossary-item"><strong>EVM</strong><span>Error Vector Magnitude — measures modulation quality as a percentage.</span></div>
+                        <div class="glossary-item"><strong>ZF / MMSE</strong><span>Zero-Forcing / Minimum Mean Square Error equalizers for channel compensation.</span></div>
+                        <div class="glossary-item"><strong>Shannon Capacity</strong><span>C = log₂(1 + SNR) — theoretical maximum throughput limit.</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Command Palette Overlay -->
+    <div class="command-palette-overlay" id="command-palette" style="display:none;" onclick="closeCommandPalette(event)">
+        <div class="command-palette" onclick="event.stopPropagation()">
+            <input type="text" id="command-input" placeholder="Search commands..." oninput="filterCommands(this.value)" autocomplete="off">
+            <div class="command-list" id="command-list"></div>
+        </div>
+    </div>
+
+    <!-- History Detail Modal -->
+    <div class="modal-overlay" id="history-detail-modal" style="display:none;" onclick="closeHistoryDetail(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="card-title" id="history-detail-title">Simulation Detail</div>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('history-detail-modal').style.display='none'">✕</button>
+            </div>
+            <div id="history-detail-body"></div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcut Help Modal -->
+    <div class="modal-overlay" id="shortcut-help-modal" style="display:none;" onclick="closeShortcutHelp(event)">
+        <div class="modal-content shortcut-help-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="card-title">⌨️ Keyboard Shortcuts</div>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('shortcut-help-modal').style.display='none'">✕</button>
+            </div>
+            <div class="shortcuts-grid">
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>K</kbd><span>Command Palette</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>1</kbd><span>Dashboard</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>2</kbd><span>BER Analyzer</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>3</kbd><span>Constellation</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>4</kbd><span>Channel Explorer</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>5</kbd><span>OFDM Lab</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>6</kbd><span>History</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>Enter</kbd><span>Run Simulation</span></div>
+                <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>E</kbd><span>Export Last Result</span></div>
+                <div class="shortcut-item"><kbd>?</kbd><span>Show This Help</span></div>
+                <div class="shortcut-item"><kbd>Escape</kbd><span>Close Modal/Palette</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/phase3.js"></script>
+    <script src="/static/js/phase4.js"></script>
+    <script src="/static/js/phase5.js"></script>
+</body>
+</html>
