@@ -1,7 +1,7 @@
 [README.md](https://github.com/user-attachments/files/28136607/README.md)
 # Sionnah3x Research Assistant
 
-**PhD-Grade Research Workbench for 6G Wireless Communication Simulations**
+**Research Workbench for 6G Wireless Communication Simulations**
 
 Sionnah3x Research Assistant is a powerful web application built on top of NVIDIA's Sionna library, PyTorch, and Flask. It provides a comprehensive, interactive set of tools for researchers to simulate, visualize, and export data for next-generation physical layer wireless research.
 
